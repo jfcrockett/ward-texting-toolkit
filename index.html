@@ -84,6 +84,17 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:.88em;background:color-m
 kbd{font-family:inherit;font-weight:600}
 .foot{color:var(--muted);font-size:.83rem;margin-top:2.2rem;text-align:center;line-height:1.5}
 a{color:var(--accent)}
+.muted-note{display:block;margin-top:.5rem;color:var(--muted);font-size:.92em}
+.step-sub a{font-weight:600}
+details.preview-details{border-top:0;padding-top:0;margin-top:.9rem}
+details.preview-details>summary{font-weight:600;color:var(--accent);font-size:.88rem}
+.update-callout{display:flex;gap:.85rem;align-items:flex-start;margin-top:1.5rem;
+ background:color-mix(in srgb,var(--accent) 9%,var(--surface));
+ border:1px solid color-mix(in srgb,var(--accent) 32%,var(--border));
+ border-radius:13px;padding:1.05rem 1.2rem;box-shadow:var(--shadow)}
+.uc-icon{font-size:1.4rem;line-height:1.2;flex:none}
+.uc-body{font-size:.95rem;color:var(--muted);line-height:1.55}
+.uc-body b{color:var(--text)}
 :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -91,32 +102,40 @@ a{color:var(--accent)}
 <div class="wrap">
  <p class="eyebrow">Ward communication</p>
  <h1 class="serif">Ward Texting Toolkit</h1>
- <p class="lede">Turn the ward directory into ready-to-text groups — Elders Quorum, Relief Society, Young Men and Young Women — then send from your phone in a couple of taps.</p>
+ <p class="lede">Send a text to any group in the ward — Elders Quorum, Relief Society, Young Men, Young Women, or everyone — right from your phone. Follow the four steps once; after that it’s a few taps.</p>
 
  <ol class="steps">
   <li class="step">
-   <div class="step-head"><span class="step-n">1</span><h2 class="serif">Make the group lists</h2></div>
-   <p class="step-sub">Choose the directory PDF (the church “Member List” export). It’s read right here in your browser — nothing is uploaded or saved anywhere.</p>
+   <div class="step-head"><span class="step-n">1</span><h2 class="serif">Get the ward directory</h2></div>
+   <p class="step-sub">You need the Church’s member list saved as a PDF. Open it, then print it and choose “Save as PDF.”</p>
+   <a class="btn btn-install" href="https://lcr.churchofjesuschrist.org/mlt/records/member-list?lang=eng" target="_blank" rel="noopener">Open the Church Member List →</a>
+   <div class="note">Sign in with your Church account if it asks. Then choose <b>Print</b>, set the destination to <b>Save as PDF</b>, and save it somewhere you’ll find it.<span class="muted-note">On an iPhone: tap the <b>Share</b> icon → <b>Print</b> → <b>Share</b> again → <b>Save to Files</b>.</span></div>
+  </li>
+
+  <li class="step">
+   <div class="step-head"><span class="step-n">2</span><h2 class="serif">Turn it into group lists</h2></div>
+   <p class="step-sub">Upload the PDF you just saved. It’s read right here on your device — nothing is uploaded or stored anywhere.</p>
    <div class="drop" id="drop">
      <input type="file" id="file" accept="application/pdf" hidden>
-     <label for="file" class="pick">Choose directory PDF…</label>
+     <label for="file" class="pick">Choose the directory PDF…</label>
      <p class="hint">or drag it onto this box</p>
    </div>
    <p id="status" class="status" role="status" aria-live="polite"></p>
    <div id="summary" class="summary"></div>
-   <div id="previewWrap" class="tablewrap" hidden><table id="preview"></table></div>
+   <details id="previewWrap" class="preview-details" hidden><summary>Show a sample of the list</summary><div class="tablewrap"><table id="preview"></table></div></details>
    <div class="downloads" id="downloads" hidden>
-     <button id="copyJson">Copy group lists for the Shortcut</button>
+     <button id="copyJson">Copy the group lists</button>
      <button id="dlJson" class="ghost">Download .json</button>
      <button id="dlCsv" class="ghost">Download CSV</button>
    </div>
-   <div class="note" id="checkNote" hidden><b>Before you use it:</b> the member count should match the “Count:” printed on the last page of the PDF. Groups: <b>EQ</b> = men 18+, <b>RS</b> = women 18+, <b>YM</b> = young men 11–18 and their parents, <b>YW</b> = young women 11–18 and their parents.</div>
+   <div class="note" id="checkNote" hidden><b>Quick check:</b> the members number above should match the “Count:” on the last page of your directory. Then tap <b>Copy the group lists</b> — you’ll paste it into the Shortcut in the next step.</div>
   </li>
 
   <li class="step">
-   <div class="step-head"><span class="step-n">2</span><h2 class="serif">Get the texting Shortcut</h2></div>
-   <p class="step-sub">The Shortcut is what actually sends the messages. Add it once on each iPhone that will send.</p>
+   <div class="step-head"><span class="step-n">3</span><h2 class="serif">Put the lists into the Shortcut</h2></div>
+   <p class="step-sub">The Shortcut is what sends the texts. Add it once to each iPhone that will send, then paste in the lists you copied.</p>
    <a class="btn btn-install" id="shortcutBtn" hidden target="_blank" rel="noopener">Install the Shortcut →</a>
+   <div class="note">Open the Shortcut, tap the <b>big text box at the very top</b>, select whatever’s in it, and <b>Paste</b>. That’s the only editing you ever do.</div>
    <p id="shortcutMissing" class="note">The install link isn’t set yet. Build the Shortcut once with the steps below, then in the Shortcuts app tap <kbd>⋯ ▸ Share ▸ Copy iCloud Link</kbd> and send that link to whoever needs it.</p>
    <details>
     <summary>How to build it (one time)</summary>
@@ -137,12 +156,16 @@ a{color:var(--accent)}
   </li>
 
   <li class="step">
-   <div class="step-head"><span class="step-n">3</span><h2 class="serif">Send a text</h2></div>
+   <div class="step-head"><span class="step-n">4</span><h2 class="serif">Send a text</h2></div>
    <p class="step-sub" style="margin-bottom:0">Run <b>Text a Ward Group</b> (or say “Hey Siri, Text a Ward Group”), pick a group, and type your message. It’s sent to each person individually, so nobody sees anyone else’s number.</p>
   </li>
  </ol>
 
- <p class="foot">Runs entirely in your browser — the directory never leaves your device.<br>Sending many texts uses your own phone number, so it’s best for smaller groups; large blasts can be slowed by carrier limits.</p>
+ <div class="update-callout">
+   <div class="uc-icon" aria-hidden="true">🔄</div>
+   <div class="uc-body"><b>Keeping the list current.</b> Anytime someone moves in or out — or you just want a fresh list — redo <b>Steps 1–2</b> with a new directory, then paste the updated lists into the Shortcut. Takes about a minute.</div>
+ </div>
+ <p class="foot">Everything runs in your browser — the directory never leaves your device. You can do all of this on a Mac or an iPhone; the Shortcut syncs across your devices.<br>Texts send from your own phone number, so it’s best for the smaller groups; very large lists can be slowed by carrier limits.</p>
 </div>
 
 <script>/**
