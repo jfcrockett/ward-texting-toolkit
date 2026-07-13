@@ -64,6 +64,7 @@ td.g{font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
 table.counts{width:auto;border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-top:.8rem}
 table.counts td,table.counts th{border-bottom:1px solid var(--border)}
 table.counts .num{text-align:right;font-family:ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+table.counts tr.subhead td{background:color-mix(in srgb,var(--accent) 6%,var(--surface));font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
 .downloads{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.2rem}
 button,.btn{font:inherit;font-weight:600;padding:.62rem 1.1rem;border:0;border-radius:9px;cursor:pointer;
  background:var(--accent);color:var(--on-accent)}
@@ -337,11 +338,19 @@ function render(recs){
   const allAdults=[]; byCode.EQ.forEach(n=>add(allAdults,n)); byCode.RS.forEach(n=>add(allAdults,n));
   const everyone=[]; for(const r of recs) add(everyone,e164(r.phone));
   const adultMembers=recs.filter(r=>r.age>=18).length;
+  // Cleaning rotation: fixed last-name ranges, both parents (every adult with a phone).
+  // Cut letters are fixed so the four teams stay the same every month; move-ins auto-join.
+  const CLEAN=[["A","F"],["G","L"],["M","S"],["T","Z"]];
+  const cg=CLEAN.map(x=>({label:"Cleaning "+x[0]+"-"+x[1],hi:x[1],nums:[],members:0}));
+  const cRange=L=>{ for(const g of cg){ if(L<=g.hi) return g; } return cg[cg.length-1]; };
+  for(const r of recs){ if(r.age>=18){ const g=cRange((r.name.trim()[0]||"").toUpperCase());
+    g.members++; const num=e164(r.phone); if(num) add(g.nums,num); } }
   // JSON with human-readable keys (these become the Shortcut's picker labels)
   const out={};
   out["Elders Quorum"]=byCode.EQ; out["Relief Society"]=byCode.RS;
   out["Young Men + parents"]=byCode.YM; out["Young Women + parents"]=byCode.YW;
   out["All adults"]=allAdults; out["Everyone"]=everyone;
+  for(const g of cg) out[g.label]=g.nums;
   window.__json=out;
   const HEAD=["Last Name","First Name","email","Mobile_Phone","Street","Street_2","City","State","Zip","Birthday","id","Company","Notes-Message Sent","Groups"];
   const esc=v=>/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
@@ -356,10 +365,14 @@ function render(recs){
     ["YW · Young Women + parents",byCode.YW.length,tot.YW],
     ["All adults",allAdults.length,adultMembers],
     ["Everyone",everyone.length,recs.length],
+    "Cleaning rotation — both parents",
   ];
+  for(const g of cg) summ.push([g.label,g.nums.length,g.members]);
   $("summary").innerHTML='<span class="big">'+recs.length+' members</span> found.'+
     '<table class="counts"><tr><th>Group</th><th class="num">Textable</th><th class="num">Members</th></tr>'+
-    summ.map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td></tr>').join("")+'</table>';
+    summ.map(r=> typeof r==="string"
+      ? '<tr class="subhead"><td colspan="3">'+r+'</td></tr>'
+      : '<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td></tr>').join("")+'</table>';
   const pv=recs.slice(0,15).map(r=>'<tr><td>'+r.name+'</td><td class="g">'+r.gender+'</td><td class="g">'+r.age+'</td><td>'+r.birth+'</td><td class="g">'+r.groups.join(" ")+'</td></tr>').join("");
   $("preview").innerHTML='<tr><th>Name</th><th>Sex</th><th>Age</th><th>Birthday</th><th>Groups</th></tr>'+pv;
   $("previewWrap").hidden=false; $("downloads").hidden=false; $("checkNote").hidden=false;
