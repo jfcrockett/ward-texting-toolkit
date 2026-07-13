@@ -96,6 +96,24 @@ details.preview-details>summary{font-weight:600;color:var(--accent);font-size:.8
 .uc-icon{font-size:1.4rem;line-height:1.2;flex:none}
 .uc-body{font-size:.95rem;color:var(--muted);line-height:1.55}
 .uc-body b{color:var(--text)}
+details.handpick{margin-top:1.1rem;border-top:1px solid var(--border);padding-top:.9rem}
+details.handpick>summary{font-weight:600;color:var(--accent)}
+.hp-intro{color:var(--muted);font-size:.9rem;margin:.7rem 0 .8rem;line-height:1.5}
+#hpSearch,#hpName{font:inherit;padding:.55rem .7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)}
+#hpSearch{width:100%;margin-bottom:.6rem}
+.hp-list{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:9px;padding:.15rem}
+.hp-head{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;position:sticky;top:0;z-index:1;
+ background:color-mix(in srgb,var(--accent) 6%,var(--surface));font-weight:700;font-size:.74rem;
+ color:var(--muted);text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.hp-row{display:flex;align-items:center;gap:.55rem;padding:.34rem .5rem .34rem 1.5rem;font-size:.92rem;cursor:pointer;border-radius:6px}
+.hp-row:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.hp-row input,.hp-head input{width:1.05rem;height:1.05rem;accent-color:var(--accent);flex:none;cursor:pointer}
+.hp-row .age{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:.82rem}
+.hp-hidden{display:none!important}
+.hp-foot{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.75rem}
+.hp-count{font-weight:600;font-size:.9rem;min-width:5.5em}
+#hpName{flex:1;min-width:11rem}
+.hp-msg{margin-top:.6rem;font-size:.9rem;color:var(--accent);font-weight:600;line-height:1.5}
 :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -130,6 +148,18 @@ details.preview-details>summary{font-weight:600;color:var(--accent);font-size:.8
      <button id="dlCsv" class="ghost">Download CSV</button>
    </div>
    <div class="note" id="checkNote" hidden><b>Quick check:</b> the members number above should match the “Count:” on the last page of your directory. Then tap <b>Copy the group lists</b> — you’ll paste it into the Shortcut in the next step.</div>
+   <details id="handpick" class="handpick" hidden>
+    <summary>Hand-pick a custom group (for one-off assignments)</summary>
+    <p class="hp-intro">Pick specific people to make a one-off group — like this week’s cleaning families. Search a last name, check the parents you want, give it a name, and add it. It joins the list so you can choose it in the Shortcut just like the others.</p>
+    <input type="search" id="hpSearch" placeholder="Search a last name…" autocomplete="off" aria-label="Search names">
+    <div id="hpList" class="hp-list" role="group" aria-label="People to choose from"></div>
+    <div class="hp-foot">
+      <span id="hpCount" class="hp-count">0 selected</span>
+      <input type="text" id="hpName" placeholder="Name this group (e.g. This week)" aria-label="Group name">
+      <button id="hpAdd">Add to the lists</button>
+    </div>
+    <p id="hpMsg" class="hp-msg" hidden role="status" aria-live="polite"></p>
+   </details>
   </li>
 
   <li class="step">
@@ -319,6 +349,70 @@ function setStatus(m,err){const s=$("status");s.textContent=m;s.className="statu
 
 (function(){ if(SHORTCUT_URL){ const b=$("shortcutBtn"); b.href=SHORTCUT_URL; b.hidden=false; $("shortcutMissing").hidden=true; } })();
 
+function escAttr(s){return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
+
+function paintSummary(){
+  const rows=(window.__summBase||[]).slice();
+  const ck=Object.keys(window.__custom||{});
+  if(ck.length){ rows.push("Custom groups"); for(const k of ck) rows.push([k,window.__custom[k].length,window.__custom[k].length]); }
+  $("summary").innerHTML='<span class="big">'+window.__count+' members</span> found.'+
+    '<table class="counts"><tr><th>Group</th><th class="num">Textable</th><th class="num">Members</th></tr>'+
+    rows.map(r=> typeof r==="string"
+      ? '<tr class="subhead"><td colspan="3">'+escAttr(r)+'</td></tr>'
+      : '<tr><td>'+escAttr(r[0])+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td></tr>').join("")+'</table>';
+}
+
+function buildPicker(recs){
+  const people=recs.filter(r=>r.age>=18 && e164(r.phone));   // adults with a phone (both parents)
+  const groups={},order=[];
+  for(const r of people){ const k=r.name.split(",")[0].trim(); if(!groups[k]){groups[k]=[];order.push(k);} groups[k].push(r); }
+  let h="";
+  for(const k of order){
+    h+='<div class="hp-group">';
+    h+='<label class="hp-head"><input type="checkbox" class="hp-all"> '+escAttr(k)+'</label>';
+    for(const r of groups[k]){
+      h+='<label class="hp-row" data-name="'+escAttr(r.name.toLowerCase())+'">'
+        +'<input type="checkbox" class="hp-cb" data-num="'+escAttr(e164(r.phone))+'">'
+        +'<span>'+escAttr(r.name)+'</span><span class="age">'+r.age+'</span></label>';
+    }
+    h+='</div>';
+  }
+  const list=$("hpList"); list.innerHTML=h;
+  const count=()=>{ $("hpCount").textContent=list.querySelectorAll(".hp-cb:checked").length+" selected"; };
+  list.addEventListener("change",ev=>{
+    if(ev.target.classList.contains("hp-all")){
+      const on=ev.target.checked;
+      ev.target.closest(".hp-group").querySelectorAll(".hp-row:not(.hp-hidden) .hp-cb").forEach(cb=>cb.checked=on);
+    }
+    count();
+  });
+  $("hpSearch").addEventListener("input",ev=>{
+    const q=ev.target.value.trim().toLowerCase();
+    list.querySelectorAll(".hp-group").forEach(grp=>{
+      let any=false;
+      grp.querySelectorAll(".hp-row").forEach(row=>{
+        const show=!q||row.dataset.name.indexOf(q)>=0;
+        row.classList.toggle("hp-hidden",!show); if(show) any=true;
+      });
+      grp.classList.toggle("hp-hidden",!any);
+    });
+  });
+  $("hpAdd").addEventListener("click",()=>{
+    const checked=[...list.querySelectorAll(".hp-cb:checked")];
+    const nums=[...new Set(checked.map(cb=>cb.dataset.num))];
+    const msg=$("hpMsg"); msg.hidden=false;
+    if(!nums.length){ msg.textContent="Pick at least one person first."; return; }
+    const name=($("hpName").value||"").trim()||"Custom group";
+    window.__custom[name]=nums;
+    window.__json={...window.__base,...window.__custom};
+    paintSummary();
+    msg.textContent="Added “"+name+"” — "+nums.length+" number"+(nums.length>1?"s":"")+". It’s in the lists now; tap “Copy the group lists” above to use it.";
+    checked.forEach(cb=>cb.checked=false);
+    list.querySelectorAll(".hp-all").forEach(cb=>cb.checked=false);
+    $("hpName").value=""; count();
+  });
+}
+
 async function handlePDF(buf){
   setStatus("Reading the directory…");
   const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
@@ -351,7 +445,7 @@ function render(recs){
   out["Young Men + parents"]=byCode.YM; out["Young Women + parents"]=byCode.YW;
   out["All adults"]=allAdults; out["Everyone"]=everyone;
   for(const g of cg) out[g.label]=g.nums;
-  window.__json=out;
+  window.__json=out; window.__base=out; window.__custom={};
   const HEAD=["Last Name","First Name","email","Mobile_Phone","Street","Street_2","City","State","Zip","Birthday","id","Company","Notes-Message Sent","Groups"];
   const esc=v=>/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;
   const rows=[HEAD.join(",")];
@@ -368,14 +462,11 @@ function render(recs){
     "Cleaning rotation — both parents",
   ];
   for(const g of cg) summ.push([g.label,g.nums.length,g.members]);
-  $("summary").innerHTML='<span class="big">'+recs.length+' members</span> found.'+
-    '<table class="counts"><tr><th>Group</th><th class="num">Textable</th><th class="num">Members</th></tr>'+
-    summ.map(r=> typeof r==="string"
-      ? '<tr class="subhead"><td colspan="3">'+r+'</td></tr>'
-      : '<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td></tr>').join("")+'</table>';
+  window.__summBase=summ; paintSummary();
   const pv=recs.slice(0,15).map(r=>'<tr><td>'+r.name+'</td><td class="g">'+r.gender+'</td><td class="g">'+r.age+'</td><td>'+r.birth+'</td><td class="g">'+r.groups.join(" ")+'</td></tr>').join("");
   $("preview").innerHTML='<tr><th>Name</th><th>Sex</th><th>Age</th><th>Birthday</th><th>Groups</th></tr>'+pv;
   $("previewWrap").hidden=false; $("downloads").hidden=false; $("checkNote").hidden=false;
+  $("handpick").hidden=false; buildPicker(recs);
   setStatus("Done — "+recs.length+" members. Check the counts, then download.");
 }
 function dl(name,text,type){const b=new Blob([text],{type});const u=URL.createObjectURL(b);
